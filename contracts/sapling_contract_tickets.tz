@@ -1,0 +1,203 @@
+# This contract manages a shielded pool with a 1 to 1 conversion with
+# respect to a fungible asset represented by tickets (with payload of
+# type `pair nat (option bytes)`, matching the FA2.1 ticket payload).
+# Standard issuer export/import wrapping requires a separate adapter.
+# As a convention, all unshield transactions must contain in their
+# `bound_data` field a packed address used as the recipient of the
+# unshielded tickets. Originated recipients must accept this ticket type.
+# Adapted from Raphaël Cauderlier's draft !7252 (dad20ce2d2f0).
+
+storage (pair (sapling_state 8)
+              (option %stored_ticket (ticket (pair nat (option bytes))))
+              (pair %ticket_identity (address %ticketer) (pair %contents nat (option bytes))));
+parameter (pair (option %paid_ticket (ticket (pair nat (option bytes)))) (list (sapling_transaction 8)));
+code { # Stack manipulation
+       NIL operation;
+       SWAP;
+       # We don't want this contract to own any tez so we reject any
+       # non-0 incoming transaction.
+       AMOUNT;
+       PUSH mutez 0;
+       COMPARE;
+       EQ;
+       IF {} { UNIT; FAILWITH };
+       UNPAIR 4;
+       UNPAIR;
+       # Reject an inconsistent initial storage, even when no new ticket is
+       # supplied. Otherwise a pre-existing ticket could have another identity.
+       DIP 3
+           {
+             IF_NONE
+               { NONE (ticket (pair nat (option bytes))) }
+               {
+                 READ_TICKET;
+                 DUP;
+                 CAR;
+                 DIP { DUP; CDR; CAR };
+                 PAIR;
+                 DUP 4;
+                 COMPARE;
+                 EQ;
+                 IF {} { UNIT; FAILWITH };
+                 DROP;
+                 SOME
+               }
+           };
+       # Remember the amount of the received ticket and join it with
+       # the stored one.
+       IF_NONE
+         {
+           # No ticket was sent as input, this is OK if all the given
+           # sapling transactions are unshielding or shielded
+           # transfers.
+           PUSH nat 0
+         }
+         {
+           READ_TICKET;
+           # The pool's asset identity remains fixed even if all tickets have
+           # previously been withdrawn and the stored ticket is None.
+           DUP;
+           CAR;
+           DIP { DUP; CDR; CAR };
+           PAIR;
+           DUP 7;
+           COMPARE;
+           EQ;
+           IF {} { UNIT; FAILWITH };
+           CDR;
+           CDR;
+           SWAP;
+           DIG 4;
+           IF_NONE {} { PAIR; JOIN_TICKETS; IF_NONE { UNIT; FAILWITH } {} };
+           SOME;
+           DUG 3
+         };
+
+       DUG 3;
+       ITER {
+              # If the transaction is valid, the resulting stack contains the
+              # bound_data and balance of the transaction and the updated
+              # state. If the rest of the script goes well, this state
+              # will be the new state of the smart contract.
+              SAPLING_VERIFY_UPDATE;
+              # In the case of an invalid transaction, we stop.
+              IF_NONE { UNIT; FAILWITH } {};
+              UNPAIR 3;
+              SWAP;
+              # Convert the balance in nat, keeping the signed balance on top
+              # of the stack and the balance in nat as the second element.
+              DUP;
+              ABS; # in case of negative balance i.e. shielding
+              SWAP;
+              # We have three cases now: unshielding, shielding and transfers.
+              # If the balance is strictly positive (i.e. unshielding), we send
+              # funds to the given address.
+              # If we can't unpack an address from the bound_data, we stop.
+              GT;
+              IF {
+                   SWAP;
+                   UNPACK address;
+                   IF_NONE { UNIT; FAILWITH } {};
+                   CONTRACT (ticket (pair nat (option bytes)));
+                   IF_NONE { UNIT; FAILWITH } {};
+                   SWAP;
+                   DIG 3; # get the stored ticket
+                   IF_NONE
+                     {
+                       # The contract has no ticket to send
+                       UNIT; FAILWITH
+                     }
+                     {
+                     };
+                   # Compute (remaining ticket balance - amount to send) because SPLIT_TICKETS needs it
+                   READ_TICKET;
+                   CDR;
+                   CDR;
+                   DUP 3;
+                   SWAP;
+                   SUB;
+                   # Three cases:
+                   # - if this is negative, this means that the
+                   #   contract does not hold enough of the tokens to
+                   #   unshield (should not happen)
+                   # - if this is 0, this means that the whole ticket
+                   #   must be sent
+                   # - if this is positive, we split the ticket, send
+                   #   a fraction and keep the rest.
+                   DUP;
+                   ISNAT;
+                   IF_NONE
+                     {
+                        # negative case
+                       UNIT;
+                       FAILWITH
+                     }
+                     {
+                     };
+                   SWAP;
+                   GT;
+                   IF
+                     {
+                       # positive case
+                       DIG 2;
+                       PAIR;
+                       SWAP;
+                       SPLIT_TICKET;
+                       IF_NONE { UNIT; FAILWITH } {};
+                       UNPAIR;
+                       SWAP;
+                       SOME;
+                       DUG 3;
+                     }
+                     {
+                       # null case
+                       DROP;
+                       NONE (ticket (pair nat (option bytes)));
+                       DUG 4;
+                       SWAP;
+                       DROP
+                     };
+                   PUSH mutez 0;
+                   SWAP;
+                   TRANSFER_TOKENS;
+                   DIG 5;
+                   SWAP;
+                   CONS;
+                   DUG 4
+                 }
+                 # If the balance is negative or 0 (i.e. shielding or
+                 # transfer), we verify the amount transferred in the
+                 # transaction is exactly the balance returned by
+                 # verify_update. This enforces the conversion 1-1
+                 # between the fungible token represented by the
+                 # ticket and the shielded token as the balance of the
+                 # stored ticket will always be the same as the number
+                 # of tokens in the sapling_state.  No operation is
+                 # executed.
+                 {
+                   DIG 4;
+                   SUB;
+                   ISNAT;
+                   IF_NONE { UNIT; FAILWITH } {};
+                   # Shielding and shielded transfers must not carry
+                   # recipient data in the `bound_data` field.
+                   DUG 3;
+                   SIZE;
+                   PUSH nat 0;
+                   COMPARE;
+                   EQ;
+                   IF {} { UNIT; FAILWITH }
+                 }
+            };
+       DIG 2;
+       INT;
+       EQ;
+       IF {} { UNIT; FAILWITH };
+       PAIR 3;
+       SWAP;
+       # Withdrawals were accumulated with CONS. Restore transaction order.
+       NIL operation;
+       SWAP;
+       ITER { CONS };
+       PAIR
+     }

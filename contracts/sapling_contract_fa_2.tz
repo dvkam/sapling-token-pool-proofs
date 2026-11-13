@@ -1,0 +1,174 @@
+# This contract manages a shielded pool with a 1 to 1 conversion with
+# respect to the FA2 token whose contract address and token id are
+# stored, updated by a list of Sapling transactions.  As a convention,
+# all unshield transactions must contain in their `bound_data` field a
+# Michelson packed address with the default entrypoint, used as the recipient of
+# the unshielded tokens.
+# Adapted from Raphaël Cauderlier's draft !7252 (dad20ce2d2f0).
+# Deposits are executed before withdrawals. Withdrawals retain transaction
+# order. The token contract must transfer exact amounts; a failed internal
+# transfer rolls back the entire call.
+
+storage (pair (sapling_state 8) (address %token_contract) (nat %token_id));
+parameter (list (sapling_transaction 8));
+code { # We don't want this contract to own any tez so we reject any
+       # non-0 incoming transaction.
+       AMOUNT;
+       PUSH mutez 0;
+       COMPARE;
+       EQ;
+       IF {} { UNIT; FAILWITH };
+       UNPAIR 4;
+       # We will accumulate transfer orders in a list of transfers
+       # from this contract (unshielding) and a map of transfers to
+       # this contract (shielding).  This allows to batch all the
+       # transactions from the same address.
+       NIL (pair address nat);
+       DUG 2;
+       EMPTY_MAP address nat;
+       DUG 2;
+       ITER {
+              # If the transaction is valid, the resulting stack contains the
+              # bound_data and balance of the transaction and the updated
+              # state. If the rest of the script goes well, this state
+              # will be the new state of the smart contract.
+              SAPLING_VERIFY_UPDATE;
+              # In the case of an invalid transaction, we stop.
+              IF_NONE { UNIT; FAILWITH } {};
+              UNPAIR 3;
+              DUG 2;
+              # Convert the balance in nat, keeping the signed balance
+              # twice on top of the stack and the balance in nat as
+              # the third element.
+              DUP;
+              DUP;
+              ABS; # in case of negative balance i.e. shielding
+              DUG 2;
+              # We have three cases now: unshielding, shielding and
+              # transfers.  If the balance is strictly positive
+              # (i.e. unshielding), we add the given address and the
+              # amount to the list of outgoing transactions.  If we
+              # can't unpack an address from the bound_data, we stop.
+              GT;
+              IF {
+                   DROP;
+                   DIG 2;
+                   UNPACK address;
+                   IF_NONE { UNIT; FAILWITH } {};
+                   # A named entrypoint would be a distinct token-ledger owner
+                   # that cannot act as SENDER. Re-PACK first: the canonical
+                   # default encoding is 28 bytes (22-byte destination + 6-byte
+                   # framing) in this protocol; named entrypoints append bytes.
+                   DUP; PACK; SIZE; PUSH nat 28; COMPARE; EQ;
+                   IF {} { PUSH string "FA_NON_DEFAULT_RECIPIENT"; FAILWITH };
+                   PAIR;
+                   DIG 3;
+                   SWAP;
+                   CONS;
+                   DUG 2
+                 }
+                 # If the balance is negative or 0 (i.e. shielding or
+                 # transfer), we don't expect any data in
+                 # the `bound_data` field.  If one is given, we fail
+                 # as it might be an invalid operation or an erroneous
+                 # call.
+                 {
+                   DIG 3;
+                   SIZE;
+                   PUSH nat 0;
+                   COMPARE;
+                   EQ;
+                   IF {} { UNIT; FAILWITH };
+                   # If the balance is negative (shielding), we add
+                   # the sender address and the amount to the map of
+                   # incoming transactions.
+                   LT;
+                   IF
+                     {
+                       DUP 3;
+                       SENDER;
+                       GET;
+                       IF_NONE { PUSH nat 0 } {};
+                       ADD;
+                       DIG 2;
+                       SWAP;
+                       SOME;
+                       SENDER;
+                       UPDATE;
+                       SWAP
+                     }
+                     # If the balance is null, there isn't much left
+                     # to do.
+                     {
+                       DROP
+                     }
+                 }
+            };
+       # With no public balance changes, only the Sapling state changes.
+       # Avoid invoking the token contract or depending on its transfer policy.
+       DUP 2;
+       SIZE;
+       DUP 4;
+       SIZE;
+       ADD;
+       PUSH nat 0;
+       COMPARE;
+       EQ;
+       IF
+         {
+           DIP { DROP 2 };
+           PAIR 3;
+           NIL operation;
+           PAIR
+         }
+         {
+           DUP 4;
+           # The only entrypoint that we are going to call on the stored
+           # FA2 contract is %transfer; we typecheck it only once.
+           CONTRACT %transfer (list (pair address (list (pair address nat nat))));
+           IF_NONE { UNIT; FAILWITH } {};
+           NIL (pair address (list (pair address nat nat)));
+           DIG 3;
+           ITER
+             {
+               UNPAIR;
+               SWAP;
+               DUP 8;
+               SELF_ADDRESS;
+               PAIR 3;
+               NIL (pair address nat nat);
+               SWAP;
+               CONS;
+               SWAP;
+               PAIR;
+               CONS
+             };
+           DIG 3;
+           # Restore the transaction order of outgoing transfers.
+           NIL (pair address nat);
+           SWAP;
+           ITER { CONS };
+           MAP
+             {
+               UNPAIR;
+               DUP 7;
+               SWAP;
+               PAIR 3;
+             };
+           SELF_ADDRESS;
+           PAIR;
+           CONS;
+           # Incoming groups were accumulated in reverse map order. Reverse
+           # the whole batch to execute them before the outgoing pool group.
+           NIL (pair address (list (pair address nat nat)));
+           SWAP;
+           ITER { CONS };
+           PUSH mutez 0;
+           SWAP;
+           TRANSFER_TOKENS;
+           NIL operation;
+           SWAP;
+           CONS;
+           PAIR 4
+         }
+     }

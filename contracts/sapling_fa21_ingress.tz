@@ -1,0 +1,34 @@
+# SPDX-License-Identifier: MIT
+# One-shot FA2.1 export receiver. The issuer sends a real ticket directly to
+# this receiver; the owner authorizes export on the issuer, not this adapter.
+# Pool, complete ticket identity, and shielding proof have no update path.
+parameter (ticket (pair nat (option bytes)));
+storage (pair (address %pool)
+              (pair %asset (address %issuer) (pair nat (option bytes)))
+              (sapling_transaction %proof 8)
+              (bool %used));
+code {
+       AMOUNT; PUSH mutez 0; COMPARE; EQ;
+       IF {} { PUSH string "FA21_INGRESS_NONZERO_TEZ"; FAILWITH };
+       UNPAIR;
+       DIP { UNPAIR 4 };
+       DUP 5;
+       IF { PUSH string "FA21_INGRESS_USED"; FAILWITH } {};
+       SENDER; DUP 4; CAR; COMPARE; EQ;
+       IF {} { PUSH string "FA21_INGRESS_WRONG_SENDER"; FAILWITH };
+       READ_TICKET;
+       DUP; CAR;
+       DIP { DUP; CDR; CAR };
+       PAIR; DUP 5; COMPARE; EQ;
+       IF {} { PUSH string "FA21_INGRESS_WRONG_ASSET"; FAILWITH };
+       DROP;
+       DUP 4;
+       NIL (sapling_transaction 8); SWAP; CONS;
+       SWAP; SOME; PAIR;
+       DUP 2;
+       CONTRACT (pair (option (ticket (pair nat (option bytes)))) (list (sapling_transaction 8)));
+       IF_NONE { PUSH string "FA21_INGRESS_BAD_POOL"; FAILWITH } {};
+       PUSH mutez 0; DIG 2; TRANSFER_TOKENS;
+       DIP { DIP 3 { DROP; PUSH bool True }; PAIR 4 };
+       NIL operation; SWAP; CONS; PAIR
+     };

@@ -1,0 +1,7 @@
+# The runner pins inputs by hash, so every checkout must have the same bytes.
+* text=auto eol=lf
+*.v text eol=lf
+*.py text eol=lf
+*.tz text eol=lf
+*.md text eol=lf
+*.json text eol=lf

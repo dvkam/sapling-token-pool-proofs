@@ -1,0 +1,35 @@
+# SPDX-License-Identifier: MIT
+# FA2.1 import receiver. The proof signs this receiver's address, whose issuer,
+# pool, full asset identity and final beneficiary have no update path.
+# Generic ledger recipients must use a default entrypoint; CLST additionally
+# requires an implicit beneficiary. No caller-supplied routing is accepted.
+parameter (ticket (pair nat (option bytes)));
+storage (pair (address %pool)
+              (pair %asset (address %issuer) (pair nat (option bytes)))
+              (address %beneficiary));
+code {
+       AMOUNT; PUSH mutez 0; COMPARE; EQ;
+       IF {} { PUSH string "FA21_EGRESS_NONZERO_TEZ"; FAILWITH };
+       UNPAIR;
+       DIP { UNPAIR 3 };
+       DUP 4; PACK; SIZE; PUSH nat 28; COMPARE; EQ;
+       IF {} { PUSH string "FA21_EGRESS_NON_DEFAULT_BENEFICIARY"; FAILWITH };
+       SENDER; DUP 3; COMPARE; EQ;
+       IF {} { PUSH string "FA21_EGRESS_WRONG_SENDER"; FAILWITH };
+       READ_TICKET;
+       DUP; CAR;
+       DIP { DUP; CDR; CAR };
+       PAIR; DUP 5; COMPARE; EQ;
+       IF {} { PUSH string "FA21_EGRESS_WRONG_ASSET"; FAILWITH };
+       DROP;
+       DUP 4; SWAP;
+       NIL (ticket (pair nat (option bytes))); SWAP; CONS;
+       SWAP; PAIR;
+       NIL (pair address (list (ticket (pair nat (option bytes))))); SWAP; CONS;
+       DUP 3; CAR;
+       CONTRACT %import_ticket (list (pair address (list (ticket (pair nat (option bytes))))));
+       IF_NONE { PUSH string "FA21_EGRESS_BAD_ISSUER"; FAILWITH } {};
+       PUSH mutez 0; DIG 2; TRANSFER_TOKENS;
+       DIP { PAIR 3 };
+       NIL operation; SWAP; CONS; PAIR
+     };

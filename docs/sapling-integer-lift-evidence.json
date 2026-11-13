@@ -1,0 +1,81 @@
+{
+  "sources": [
+    {
+      "path": "octez/src/proto_alpha/lib_protocol/sapling_validator.ml",
+      "sha256": "e2084594f9aa7e62a1dffde20219bbeaaf4ab72ca5e1532af0c8c4a77ccf0f9a"
+    },
+    {
+      "path": "octez/src/proto_alpha/lib_protocol/script_interpreter.ml",
+      "sha256": "889299a16f3561addbbadfc837d95aa05f28427d809d149563562aad82e6b396"
+    },
+    {
+      "path": "octez/src/lib_sapling/core.ml",
+      "sha256": "ebd40dc3994d5a2a8bb46664066b254a6c91d0b382398063a8a94f101427b674"
+    },
+    {
+      "path": "octez/src/lib_sapling/core_sig.ml",
+      "sha256": "a108104f3459e78d79a6191519986784e57a9585537c6b3500d9e8c8e79ce98c"
+    },
+    {
+      "path": "octez/src/lib_sapling/rustzcash.ml",
+      "sha256": "e8cd94c7d376e7d03a814d3f812f880100368c211fdbff926fe8f559e235f5cd"
+    },
+    {
+      "path": "octez/src/lib_sapling/bindings/rustzcash_ctypes_bindings.ml",
+      "sha256": "3a65cb20a8a6d9e0b6a5f286ce12cc3bc0549b7368343b3532827f0e59010612"
+    },
+    {
+      "path": "octez/src/rustzcash_deps/src/rustzcash.rs",
+      "sha256": "d7b7abd51329c4c07753306224dc6cb804d7acf85a646ed9041629a4d9b32767"
+    },
+    {
+      "path": "octez/src/rustzcash_deps/Cargo.toml",
+      "sha256": "e2805bf11e172f2197aca02aa8dc1072085deee756cba21f7327821d49ea6de0"
+    },
+    {
+      "path": "octez/src/rust_deps/Cargo.lock",
+      "sha256": "4aed27a7e23452f4c25089d007b36c9dbac5908177441e9b36848422520f0884"
+    },
+    {
+      "path": "cargo-registry/jubjub-0.9.0/src/fr.rs",
+      "sha256": "fbf23af796a297fd10af9d30ee855e090d68a62c8479de7c1a430cc359b4442b"
+    },
+    {
+      "path": "cargo-registry/jubjub-0.9.0/src/lib.rs",
+      "sha256": "d9d3cbfe3ab988eaa62792117b600d829d99f9827f29423e05ca1eece9a59cee"
+    },
+    {
+      "path": "cargo-registry/zcash_primitives-0.6.0/src/constants.rs",
+      "sha256": "1625d104c9332ed83f00cdf5e6b405ce893cf275d1b1905c197f9f2e12676c99"
+    },
+    {
+      "path": "cargo-registry/zcash_primitives-0.6.0/src/sapling/group_hash.rs",
+      "sha256": "aa4e48b1d6601ab1cbb4190bdfa220094cf8fcdd2ae03ad309719a2da52d5358"
+    },
+    {
+      "path": "cargo-registry/zcash_primitives-0.6.0/src/transaction/components/amount.rs",
+      "sha256": "a83c8f4da040659af31e8df2052dfbe446c3694cc90cef42964c13eaaf0fe813"
+    },
+    {
+      "path": "cargo-registry/zcash_proofs-0.6.0/src/circuit/sapling.rs",
+      "sha256": "1b8cd364310393e611a71f4a3d852d68c32031ee161a275b125a5aca4e9b7855"
+    },
+    {
+      "path": "cargo-registry/zcash_proofs-0.6.0/src/sapling/mod.rs",
+      "sha256": "86e9e9ae2d0e6f9039198fa7d9a3a382960ea1d1b8ce48545d251efb2e10b524"
+    },
+    {
+      "path": "cargo-registry/zcash_proofs-0.6.0/src/sapling/verifier.rs",
+      "sha256": "90f9984b5b4d64aba9e8531e8fd1ba23a86b0b749e9124ced4dbc5f1632e630e"
+    },
+    {
+      "path": "cargo-registry/bellman-0.13.1/src/gadgets/boolean.rs",
+      "sha256": "a04be86d453af54d82e6832f669012b3adb3910e9d150bed7482cb77eed9cfc1"
+    }
+  ],
+  "jubjub_order": "6554484396890773809930967563523245729705921265872317281365359162392183254199",
+  "max_positive_discrepancy": "96079866507916199586728",
+  "max_negative_discrepancy_magnitude": "37253199656856439486492",
+  "proof_sha256": "4660cd915fc2ccb4fe135194f748be958d1644c93a11656767264fd5747727f5",
+  "octez_base": "932c237495cfd795872bd70ef9ecc8af59868bab"
+}
