@@ -12,7 +12,7 @@ The contracts belong to the Tezos Octez project. Octez is developed on GitLab at
 
 - The three pool contracts continue Raphaël Cauderlier's draft merge request [!7252](https://gitlab.com/tezos/tezos/-/merge_requests/7252) at Nomadic Labs, written for Octez issue [#4488](https://gitlab.com/tezos/tezos/-/work_items/4488). This repository contains modified versions of his contracts.
 - The two adapter contracts are new. They were written with these proofs and follow the ticket export and import interface of [TZIP-26](https://gitlab.com/tezos/tzip/-/blob/f0acad1b8215e3e07c879546c186488a0aa86963/proposals/tzip-26/tzip-26.md).
-- The modified pools and the adapters are not part of Octez. They are prepared as a proposal for Octez and have not been merged. If Octez accepts different versions, the proofs here apply only to the files in `contracts/`.
+- The modified pools and the adapters are not part of Octez. Two draft merge requests propose them: [!23143](https://gitlab.com/tezos/tezos/-/merge_requests/23143) for the pools and [!23144](https://gitlab.com/tezos/tezos/-/merge_requests/23144) for the adapters. Neither is merged. If Octez accepts different versions, the proofs here apply only to the files in `contracts/`.
 - All references to Octez source files in `docs/` point at Octez commit [`932c2374`](https://gitlab.com/tezos/tezos/-/tree/932c237495cfd795872bd70ef9ecc8af59868bab).
 
 [contracts/README.md](contracts/README.md) lists each file with its origin and hash.
